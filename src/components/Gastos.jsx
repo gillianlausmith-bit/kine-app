@@ -1,13 +1,12 @@
 import React, { useState } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { Card, CardTitle, MetricCard, Btn, Modal, Field, Input, Select, FormGrid, EmptyState } from './UI'
-import { fmt, fmtDate, today, currentMonth, CATS_GASTO, nextId } from '../utils'
+import { fmt, fmtDate, today, currentMonth, CATS_GASTO } from '../utils'
 
 const CAT_COLORS = ['#1D9E75','#185FA5','#D85A30','#BA7517','#D4537E','#888780','#639922']
-
 const defaultForm = { concepto: '', cat: 'Transporte', monto: '', fecha: today(), notas: '' }
 
-export default function Gastos({ gastos, setGastos, sesiones }) {
+export default function Gastos({ gastos, addGasto, removeGasto, sesiones }) {
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState(defaultForm)
 
@@ -22,19 +21,19 @@ export default function Gastos({ gastos, setGastos, sesiones }) {
     gastosMes.reduce((acc, g) => { acc[g.cat] = (acc[g.cat] || 0) + g.monto; return acc }, {})
   ).map(([name, value]) => ({ name, value }))
 
-  function save() {
+  async function save() {
     if (!form.concepto || !form.monto) return alert('Completa concepto y monto')
-    setGastos(prev => [...prev, { ...form, id: nextId(gastos), monto: parseInt(form.monto) }])
+    await addGasto({ concepto: form.concepto, cat: form.cat, monto: parseInt(form.monto), fecha: form.fecha, notas: form.notas })
     setModalOpen(false)
+    setForm(defaultForm)
   }
 
-  function remove(id) {
-    if (window.confirm('¿Eliminar este gasto?')) setGastos(prev => prev.filter(g => g.id !== id))
+  async function remove(id) {
+    if (window.confirm('¿Eliminar este gasto?')) await removeGasto(id)
   }
 
   return (
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Summary */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
         <MetricCard label="Ingresos del mes" value={fmt(ingresosMes)} sub="sesiones cobradas" icon="💰" />
         <MetricCard label="Gastos del mes" value={fmt(totalGastos)} sub={`${gastosMes.length} registros`} icon="🧾" />
@@ -43,7 +42,6 @@ export default function Gastos({ gastos, setGastos, sesiones }) {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, alignItems: 'start' }}>
-        {/* Gasto list */}
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <CardTitle>Gastos registrados</CardTitle>
@@ -77,7 +75,6 @@ export default function Gastos({ gastos, setGastos, sesiones }) {
           )}
         </Card>
 
-        {/* Pie chart */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Card>
             <CardTitle>Gastos por categoría · {mes}</CardTitle>
@@ -98,10 +95,7 @@ export default function Gastos({ gastos, setGastos, sesiones }) {
 
           <Card>
             <CardTitle>Resumen financiero</CardTitle>
-            {[
-              ['Ingresos brutos', fmt(ingresosMes), false],
-              ['Total gastos', '−' + fmt(totalGastos), true],
-            ].map(([l, v, neg]) => (
+            {[['Ingresos brutos', fmt(ingresosMes), false], ['Total gastos', '−' + fmt(totalGastos), true]].map(([l, v, neg]) => (
               <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
                 <span style={{ color: 'var(--text-2)' }}>{l}</span>
                 <span style={{ fontWeight: 500, color: neg ? 'var(--red-600)' : 'var(--text-1)' }}>{v}</span>

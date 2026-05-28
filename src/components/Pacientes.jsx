@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
 import { Card, Avatar, Badge, Btn, Modal, Field, Input, Select, FormGrid, EmptyState } from './UI'
-import { fmt, fmtDate, getInitials, COLORS_LIST, TIPOS_SESION, nextId } from '../utils'
+import { fmt, fmtDate, getInitials, COLORS_LIST, nextId } from '../utils'
 
 const defaultForm = { nombre: '', diagnostico: '', tel: '', email: '', valorHabitual: '', color: 'teal' }
 
-export default function Pacientes({ pacientes, setPacientes, sesiones }) {
+export default function Pacientes({ pacientes, addPaciente, removePaciente, sesiones }) {
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState(defaultForm)
   const [selected, setSelected] = useState(null)
@@ -13,33 +13,33 @@ export default function Pacientes({ pacientes, setPacientes, sesiones }) {
   function getPacStats(id) {
     const s = sesiones.filter(x => x.pacienteId === id)
     const total = s.reduce((acc, x) => acc + x.monto, 0)
-    const ultima = s.sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
+    const ultima = [...s].sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
     return { count: s.length, total, ultima }
   }
 
-  const filtered = pacientes.filter(p => p.nombre.toLowerCase().includes(search.toLowerCase()) || p.diagnostico.toLowerCase().includes(search.toLowerCase()))
+  const filtered = pacientes.filter(p =>
+    p.nombre.toLowerCase().includes(search.toLowerCase()) ||
+    (p.diagnostico || '').toLowerCase().includes(search.toLowerCase())
+  )
 
-  function openNew() {
-    setForm(defaultForm)
-    setModalOpen(true)
-  }
-
-  function save() {
+  async function save() {
     if (!form.nombre.trim()) return alert('El nombre es obligatorio')
-    const nuevo = {
-      ...form,
-      id: nextId(pacientes),
-      iniciales: getInitials(form.nombre),
+    await addPaciente({
+      nombre: form.nombre,
+      diagnostico: form.diagnostico,
+      tel: form.tel,
+      email: form.email,
       valorHabitual: parseInt(form.valorHabitual) || 25000,
+      iniciales: getInitials(form.nombre),
       color: form.color || 'teal',
-    }
-    setPacientes(prev => [...prev, nuevo])
+    })
     setModalOpen(false)
+    setForm(defaultForm)
   }
 
-  function remove(id) {
-    if (window.confirm('¿Eliminar este paciente? Sus sesiones no se eliminarán.')) {
-      setPacientes(prev => prev.filter(p => p.id !== id))
+  async function remove(id) {
+    if (window.confirm('¿Eliminar este paciente?')) {
+      await removePaciente(id)
       setSelected(null)
     }
   }
@@ -52,7 +52,7 @@ export default function Pacientes({ pacientes, setPacientes, sesiones }) {
           value={search} onChange={e => setSearch(e.target.value)}
           style={{ height: 36, flex: 1, border: '1px solid var(--border-md)', borderRadius: 'var(--radius-sm)', padding: '0 12px', fontSize: 13, background: 'var(--surface)', color: 'var(--text-1)', outline: 'none' }}
         />
-        <Btn variant="primary" onClick={openNew}>+ Agregar paciente</Btn>
+        <Btn variant="primary" onClick={() => { setForm(defaultForm); setModalOpen(true) }}>+ Agregar paciente</Btn>
       </div>
 
       {filtered.length === 0 ? (
@@ -62,15 +62,11 @@ export default function Pacientes({ pacientes, setPacientes, sesiones }) {
           {filtered.map(p => {
             const stats = getPacStats(p.id)
             return (
-              <div
-                key={p.id}
-                onClick={() => setSelected(p)}
-                style={{
-                  background: 'var(--surface)', border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-lg)', padding: '16px',
-                  cursor: 'pointer', transition: 'box-shadow 0.15s, border-color 0.15s',
-                  boxShadow: 'var(--shadow-sm)',
-                }}
+              <div key={p.id} onClick={() => setSelected(p)} style={{
+                background: 'var(--surface)', border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-lg)', padding: '16px', cursor: 'pointer',
+                transition: 'box-shadow 0.15s, border-color 0.15s', boxShadow: 'var(--shadow-sm)',
+              }}
                 onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--shadow-md)'; e.currentTarget.style.borderColor = 'var(--border-md)' }}
                 onMouseLeave={e => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; e.currentTarget.style.borderColor = 'var(--border)' }}
               >
@@ -101,7 +97,6 @@ export default function Pacientes({ pacientes, setPacientes, sesiones }) {
         </div>
       )}
 
-      {/* Add patient modal */}
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Agregar paciente" width={500}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <FormGrid>
@@ -137,7 +132,6 @@ export default function Pacientes({ pacientes, setPacientes, sesiones }) {
         </div>
       </Modal>
 
-      {/* Patient detail modal */}
       {selected && (
         <Modal open={!!selected} onClose={() => setSelected(null)} title="Ficha del paciente" width={520}>
           {(() => {

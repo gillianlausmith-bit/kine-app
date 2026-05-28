@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Card, CardTitle, Badge, Btn, Avatar, Modal, Field, Input, Select, FormGrid, EmptyState } from './UI'
-import { fmt, fmtDate, today, TIPOS_SESION, nextId } from '../utils'
+import { fmt, fmtDate, today, TIPOS_SESION } from '../utils'
 
 function payBadge(p) {
   if (p === 'si') return <Badge color="teal">Pagado</Badge>
@@ -10,7 +10,7 @@ function payBadge(p) {
 
 const defaultForm = { fecha: today(), pacienteId: '', tipo: 'Rehabilitación', monto: '', pagado: 'si', notas: '' }
 
-export default function Sesiones({ sesiones, setSesiones, pacientes }) {
+export default function Sesiones({ sesiones, addSesion, removeSesion, pacientes }) {
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState(defaultForm)
   const [filtro, setFiltro] = useState('todas')
@@ -21,19 +21,14 @@ export default function Sesiones({ sesiones, setSesiones, pacientes }) {
     .sort((a, b) => b.fecha.localeCompare(a.fecha))
     .filter(s => filtro === 'todas' ? true : s.pagado === filtro)
 
-  function openModal() {
-    setForm(defaultForm)
-    setModalOpen(true)
-  }
-
-  function save() {
+  async function save() {
     if (!form.pacienteId || !form.monto || !form.fecha) return alert('Completa todos los campos obligatorios')
-    setSesiones(prev => [...prev, { ...form, id: nextId(sesiones), pacienteId: parseInt(form.pacienteId), monto: parseInt(form.monto) }])
+    await addSesion({ ...form, pacienteId: parseInt(form.pacienteId), monto: parseInt(form.monto) })
     setModalOpen(false)
   }
 
-  function remove(id) {
-    if (window.confirm('¿Eliminar esta sesión?')) setSesiones(prev => prev.filter(s => s.id !== id))
+  async function remove(id) {
+    if (window.confirm('¿Eliminar esta sesión?')) await removeSesion(id)
   }
 
   const totalFiltrado = filtradas.reduce((s, x) => s + x.monto, 0)
@@ -54,7 +49,7 @@ export default function Sesiones({ sesiones, setSesiones, pacientes }) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 13, color: 'var(--text-2)' }}>{filtradas.length} sesiones · <b>{fmt(totalFiltrado)}</b></span>
-          <Btn variant="primary" onClick={openModal}>+ Registrar sesión</Btn>
+          <Btn variant="primary" onClick={() => { setForm(defaultForm); setModalOpen(true) }}>+ Registrar sesión</Btn>
         </div>
       </div>
 
@@ -89,7 +84,7 @@ export default function Sesiones({ sesiones, setSesiones, pacientes }) {
                     <td style={{ padding: '10px', fontWeight: 600 }}>{fmt(s.monto)}</td>
                     <td style={{ padding: '10px' }}>{payBadge(s.pagado)}</td>
                     <td style={{ padding: '10px', textAlign: 'right' }}>
-                      <button onClick={() => remove(s.id)} style={{ fontSize: 13, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer' }} title="Eliminar">✕</button>
+                      <button onClick={() => remove(s.id)} style={{ fontSize: 13, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
                     </td>
                   </tr>
                 )
