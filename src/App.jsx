@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabase'
-import { seedPacientes, seedSesiones, seedGastos, seedCitas } from './data/seed'
 import Resumen    from './components/Resumen'
 import Agenda     from './components/Agenda'
 import Sesiones   from './components/Sesiones'
@@ -47,33 +46,10 @@ export default function App() {
       setSesiones((s.data || []).map(x => ({ ...x, pacienteId: x.paciente_id })))
       setGastos(g.data || [])
       setCitas((c.data || []).map(x => ({ ...x, pacienteId: x.paciente_id })))
-      if (!p.data || p.data.length === 0) await seedAll()
       setLoading(false)
     }
     loadData()
   }, [])
-
-  async function seedAll() {
-    const { data: pacs } = await supabase.from('pacientes').insert(
-      seedPacientes.map(p => ({ nombre: p.nombre, diagnostico: p.diagnostico, tel: p.tel, email: p.email, valor_habitual: p.valorHabitual, iniciales: p.iniciales, color: p.color }))
-    ).select()
-    if (!pacs) return
-    const idMap = {}
-    seedPacientes.forEach((sp, i) => { idMap[sp.id] = pacs[i].id })
-    await supabase.from('sesiones').insert(seedSesiones.map(s => ({ fecha: s.fecha, paciente_id: idMap[s.pacienteId], tipo: s.tipo, monto: s.monto, pagado: s.pagado, notas: s.notas })))
-    await supabase.from('gastos').insert(seedGastos.map(g => ({ concepto: g.concepto, cat: g.cat, monto: g.monto, fecha: g.fecha })))
-    await supabase.from('citas').insert(seedCitas.map(c => ({ fecha: c.fecha, hora: c.hora, paciente_id: idMap[c.pacienteId], tipo: c.tipo, notas: c.notas, recordatorio: c.recordatorio })))
-    const [p2, s2, g2, c2] = await Promise.all([
-      supabase.from('pacientes').select('*').order('id'),
-      supabase.from('sesiones').select('*').order('fecha', { ascending: false }),
-      supabase.from('gastos').select('*').order('fecha', { ascending: false }),
-      supabase.from('citas').select('*').order('fecha'),
-    ])
-    setPacientes((p2.data || []).map(x => ({ ...x, valorHabitual: x.valor_habitual, iniciales: x.iniciales || x.nombre.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2) })))
-    setSesiones((s2.data || []).map(x => ({ ...x, pacienteId: x.paciente_id })))
-    setGastos(g2.data || [])
-    setCitas((c2.data || []).map(x => ({ ...x, pacienteId: x.paciente_id })))
-  }
 
   async function addPaciente(data) {
     const { data: row } = await supabase.from('pacientes').insert([{ nombre: data.nombre, diagnostico: data.diagnostico, tel: data.tel, email: data.email, valor_habitual: data.valorHabitual, iniciales: data.iniciales, color: data.color }]).select().single()
@@ -121,8 +97,6 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg)' }}>
-
-      {/* Top header — mobile friendly */}
       <header style={{
         background: 'var(--surface)', borderBottom: '1px solid var(--border)',
         padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -133,7 +107,6 @@ export default function App() {
         <div style={{ fontSize: 11, color: 'var(--text-3)' }}>☁️ nube</div>
       </header>
 
-      {/* Main content */}
       <main style={{ flex: 1, overflowY: 'auto', padding: '20px 16px 90px' }}>
         {tab === 'resumen'    && <Resumen    sesiones={sesiones} pacientes={pacientes} gastos={gastos} citas={citas} />}
         {tab === 'agenda'     && <Agenda     citas={citas} setCitas={setCitas} addCita={addCita} removeCita={removeCita} pacientes={pacientes} sesiones={sesiones} setSesiones={setSesiones} addSesion={addSesion} />}
@@ -143,7 +116,6 @@ export default function App() {
         {tab === 'gastos'     && <Gastos     gastos={gastos} addGasto={addGasto} removeGasto={removeGasto} sesiones={sesiones} />}
       </main>
 
-      {/* Bottom nav — mobile style */}
       <nav style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: 'var(--surface)', borderTop: '1px solid var(--border)',
@@ -158,13 +130,12 @@ export default function App() {
               flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               padding: '8px 2px 6px', border: 'none', background: 'none', cursor: 'pointer',
               color: active ? 'var(--accent)' : 'var(--text-3)',
-              position: 'relative',
-              transition: 'color 0.15s',
+              position: 'relative', transition: 'color 0.15s',
             }}>
               <span style={{ fontSize: 20, lineHeight: 1 }}>{item.icon}</span>
-              <span style={{ fontSize: 10, marginTop: 3, fontWeight: active ? 600 : 400, letterSpacing: '0.01em' }}>{item.label}</span>
+              <span style={{ fontSize: 10, marginTop: 3, fontWeight: active ? 600 : 400 }}>{item.label}</span>
               {active && <span style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 24, height: 2, background: 'var(--accent)', borderRadius: 2 }} />}
-              {badge && <span style={{ position: 'absolute', top: 6, right: '18%', background: 'var(--accent)', color: '#fff', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px', minWidth: 16, textAlign: 'center' }}>{badge}</span>}
+              {badge && <span style={{ position: 'absolute', top: 6, right: '18%', background: 'var(--accent)', color: '#fff', fontSize: 9, fontWeight: 700, borderRadius: 10, padding: '1px 5px' }}>{badge}</span>}
             </button>
           )
         })}
